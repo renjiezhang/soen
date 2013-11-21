@@ -1,27 +1,32 @@
 package failureDetection;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+
 import common.City;
+import common.Machine;
 
 public class failureTester {
 		public static void main(String[] args) {  
 					
-			launchMachines();
+			launchSimulatedMachines();
 		}
 		
-		private static void launchMachines() {
+		private static void launchSimulatedMachines() {
 			FailureTimeouts failureTimeouts = new FailureTimeouts(2000, 8000, 5000);
 			
-			for (City city : City.values()) {
-				
+			//Launch 3 fake machines
+			Machine[] machines = new Machine[]{	new Machine("localhost", 8000, 8001, 0, 0),
+												new Machine("localhost", 8010, 8011, 0, 1),
+												new Machine("localhost", 8020, 8021, 0, 2)};
+			
+			for(int x = 0; x < machines.length; x++) {
+								
 				UdpFailureDetection failureDetection;
-				
-				if (city == City.QUEBEC) {
-					failureDetection = new UdpFailureDetection(failureTimeouts, city.portUdp, MembershipState.LEADER);
+				failureDetection = new UdpFailureDetection(failureTimeouts, machines, machines[x]);
 //					failureDetection = new UdpFailureDetection(failureTimeouts, city.portUdp, MembershipState.MEMBER);
-				} else {
-					continue;
 //					failureDetection = new UdpFailureDetection(failureTimeouts, city.portUdp, MembershipState.MEMBER);					
-				}
+				
 				Thread udpThread = new Thread(failureDetection);
 				udpThread.start();
 				
