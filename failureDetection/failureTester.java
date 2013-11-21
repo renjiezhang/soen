@@ -1,7 +1,6 @@
 package failureDetection;
 
 import common.City;
-import udpCommunicator.*;
 
 public class failureTester {
 		public static void main(String[] args) {  
@@ -18,8 +17,10 @@ public class failureTester {
 				
 				if (city == City.QUEBEC) {
 					failureDetection = new UdpFailureDetection(failureTimeouts, city.portUdp, MembershipState.LEADER);
+//					failureDetection = new UdpFailureDetection(failureTimeouts, city.portUdp, MembershipState.MEMBER);
 				} else {
-					failureDetection = new UdpFailureDetection(failureTimeouts, city.portUdp, MembershipState.MEMBER);					
+					continue;
+//					failureDetection = new UdpFailureDetection(failureTimeouts, city.portUdp, MembershipState.MEMBER);					
 				}
 				Thread udpThread = new Thread(failureDetection);
 				udpThread.start();
