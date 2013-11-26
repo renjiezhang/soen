@@ -19,6 +19,7 @@ public class ServerProcessInfo extends JComponent implements DocumentListener {
 	private City city;
 
 	Document docPort, docIP;
+	JTextField txtIP, txtPort;	
 
 	public ServerProcessInfo(City city) {
 		super();
@@ -26,10 +27,10 @@ public class ServerProcessInfo extends JComponent implements DocumentListener {
 		this.setLayout(new GridLayout(1, 5));
 		
 		this.add(new JLabel("-["+city.name+"]-"));
-		JTextField txtIP = new JTextField(16);
+		 txtIP = new JTextField(16);
 		this.docIP = txtIP.getDocument();
 		this.docIP.addDocumentListener(this);
-		JTextField txtPort = new JTextField(6);
+		 txtPort = new JTextField(6);
 		this.docPort = txtPort.getDocument();
 		this.docPort.addDocumentListener(this);
 		this.add(new JLabel("Host : "));
@@ -80,5 +81,14 @@ public class ServerProcessInfo extends JComponent implements DocumentListener {
 		}
 
 	}
+	private void updateInfo(String ip, int port) {
+
+		this.ip=ip;
+		this.port=port;
+		this.txtIP.setText(ip);
+		this.txtPort.setText(port+"");
+		this.repaint();
+	}
+	
 
 }

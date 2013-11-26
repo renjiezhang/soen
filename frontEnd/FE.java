@@ -11,6 +11,10 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketException;
 import java.rmi.RemoteException;
 import java.util.Calendar;
 import java.util.HashMap;
@@ -22,7 +26,12 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
+import javax.swing.JTextField;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.AbstractTableModel;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.Document;
 import javax.xml.ws.Endpoint;
 
 import org.omg.CORBA.ORBPackage.InvalidName;
@@ -34,6 +43,8 @@ import org.omg.PortableServer.POAPackage.ObjectNotActive;
 import org.omg.PortableServer.POAPackage.ServantAlreadyActive;
 import org.omg.PortableServer.POAPackage.WrongPolicy;
 
+import server.UdpRecCountSvr;
+
 import common.City;
 import common.LogTool;
 import common.Record;
@@ -42,8 +53,18 @@ import common.RecordMissing;
 import common.Storage;
 
 public class FE extends PoliceStationPOA implements Runnable {
+	final static int PORT = 7777;
+
 	String ior;
 	int id = 10001;
+	Storage storage;
+
+	static final String pathLog = "/tmp/policeStation";
+	LogTool logtool;
+
+	Document docPort;
+
+	HashMap<City, ServerProcessInfo> serverInfos;
 
 	@Override
 	public boolean createCRecord(String firstName, String lastName,
@@ -68,6 +89,7 @@ public class FE extends PoliceStationPOA implements Runnable {
 			String badgeID) {
 		this.log("createMRecord() get request from " + badgeID);
 		int idrec = id++;
+		String cityname=badgeID.substring(2);
 		Calendar cLastDate = Calendar.getInstance();
 		cLastDate.setTimeInMillis(lastDate);
 		boolean isSuccess = this.storage.addRecord(new RecordMissing(idrec,
@@ -75,7 +97,7 @@ public class FE extends PoliceStationPOA implements Runnable {
 				Record.MRStatus.valueOf(status)), Record.RecordType.MISSING);
 		String msg = String
 				.format("[%s] create a missing record: [id: %s%05d][%s %s - %s] address: %s, last location: %s",
-						badgeID, this.city.name, idrec, firstName, lastName,
+						badgeID, cityname, idrec, firstName, lastName,
 						status, address, lastLocation);
 		this.log(msg);
 		this.updateUI();
@@ -98,7 +120,7 @@ public class FE extends PoliceStationPOA implements Runnable {
 			}
 		}
 
-		return msg + "}";
+		return msg + "";
 	}
 
 	@Override
@@ -171,51 +193,44 @@ public class FE extends PoliceStationPOA implements Runnable {
 		return false;
 	}
 
-	Storage storage;
-
-	static final String pathLog = "/tmp/policeStation";
-	LogTool logtool;
-
 	public void log(String msg) {
 		this.logtool.log(msg);
 	}
 
 	JPanel jpanel;
-	JScrollPane spanel;
 
-	// JTable tbl;
-
-	City city;
-	int port;
+	// JScrollPane spanel;
 
 	FE() {
+
+		/*
+		 * add all police station leader information
+		 */
 		this.jpanel = new JPanel();
 		this.jpanel.setLayout(new GridLayout(2, 1));
-		
-		JPanel jpServer=new JPanel();
+
+		JPanel jpServer = new JPanel();
 		jpServer.setLayout(new GridLayout(City.values().length, 5));
-		this.serverInfos=new HashMap<City, ServerProcessInfo>();
+		this.serverInfos = new HashMap<City, ServerProcessInfo>();
 		for (City city : City.values()) {
 			ServerProcessInfo info = new ServerProcessInfo(city);
 			this.serverInfos.put(city, info);
 			jpServer.add(info);
 		}
 		this.jpanel.add(jpServer);
-		this.city = City.MONTREAL;
-		storage = new Storage();
 
-		
-		
+		/*
+		 * add the udp server( receive the new leader information) port
+		 */
 
-		// fr.pack();
+		this.jpanel.add(new JLabel(
+				"UDP server receiving new Leader Process, Port: " + PORT));
 
 		jpanel.setVisible(true);
 
 		this.logtool = new LogTool(pathLog + "/city.log");
 
 	}
-
-	HashMap<City, ServerProcessInfo>  serverInfos;
 
 	public static void main(String[] args) throws RemoteException, InvalidName,
 			ServantAlreadyActive, WrongPolicy, ObjectNotActive,
@@ -226,34 +241,44 @@ public class FE extends PoliceStationPOA implements Runnable {
 		Container cpanel = fr.getContentPane();
 		Container cp = fr.getContentPane();
 
-		
-
 		FE fe = new FE();
-		
-
-		
 
 		fe.setJFrame(fr);
 		fe.updateUI();
-		 cp.add(fe.jpanel);
+		cp.add(fe.jpanel);
 
-		UdpRecCountSvr svr = new UdpRecCountSvr(fe);
-		Thread thSvr = new Thread(svr);
-		thSvr.start();
+		
 		System.out.println(String.format("FrontEnd upd server is up"));
 
 		new Thread(fe).start();
 
 		// }
 		fr.setVisible(true);
+		
+		
+		DatagramSocket serverSocket = null;
+		try {
+			serverSocket = new DatagramSocket(PORT);
+		} catch (SocketException e2) {
+			// TODO Auto-generated catch block
+			e2.printStackTrace();
+			return;
+		}
 
+		byte[] receiveData = new byte[2048];
+		
 		while (true) {
+			DatagramPacket receivePacket = new DatagramPacket(receiveData,
+					receiveData.length);
 			try {
-				Thread.sleep(2000);
-			} catch (InterruptedException e) {
+				serverSocket.receive(receivePacket);
+			} catch (IOException e1) {
 				// TODO Auto-generated catch block
-				e.printStackTrace();
+				e1.printStackTrace();
 			}
+			String sentence = new String(receivePacket.getData());
+			
+
 		}
 
 	}
@@ -294,9 +319,10 @@ public class FE extends PoliceStationPOA implements Runnable {
 			String ior = orb.object_to_string(ref);
 			IORRepositoryInterface iorRepo = new IORRepository(ior);
 			// iorRepo.saveIOR(city.name, ior);
-			System.out.println(String.format(
-					"PoliceStation[%s] is up and running, ior: \n%s",
-					city.name, ior));
+			System.out
+					.println(String
+							.format("PoliceStation FrontEnd is up and running, ior: \n%s",
+									ior));
 			rootPOA.the_POAManager().activate();
 			Endpoint.publish("http://localhost:" + IORRepository.PORT + "/ws",
 					iorRepo);

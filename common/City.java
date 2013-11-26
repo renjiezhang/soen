@@ -4,7 +4,7 @@ import java.util.HashSet;
 
 public enum City {
 
-	MONTREAL("Montreal", 9001), QUEBEC("Quebec", 9002), TORONTO("Toronto", 9003);
+	MONTREAL("Montreal", 9001), QUEBEC("Quebec", 9002), TORONTO("Toronto", 9003), TORONTOA("Toaronto", 9007);
 	public String name;
 	public int portUdp;
 
