@@ -43,13 +43,19 @@ import org.omg.PortableServer.POAPackage.ObjectNotActive;
 import org.omg.PortableServer.POAPackage.ServantAlreadyActive;
 import org.omg.PortableServer.POAPackage.WrongPolicy;
 
+<<<<<<< HEAD:frontEnd/FE.java
 import server.UdpRecCountSvr;
+=======
+import udpFIFO.udpFIFO;
+>>>>>>> 522cbffccd914073f7f07a969bc08e8e579802e7:frontEnd/FE.java
 
 import common.City;
 import common.LogTool;
+import common.Message;
+import common.MessageType;
 import common.Record;
 import common.RecordCriminal;
-import common.RecordMissing;
+import common.RecordMissing;f 
 import common.Storage;
 
 public class FE extends PoliceStationPOA implements Runnable {
@@ -69,18 +75,25 @@ public class FE extends PoliceStationPOA implements Runnable {
 	@Override
 	public boolean createCRecord(String firstName, String lastName,
 			String description, String status, String badgeID) {
+		
 		this.log("createCRecord() get request from " + badgeID);
-		// boolean isSuccess=false;
-		boolean isSuccess = this.storage.addRecord(
-				new RecordCriminal(id++, firstName, lastName, description,
-						Record.CRStatus.valueOf(status)),
-				Record.RecordType.CRIMINAL);
-		String msg = String.format(
-				"[%s] create a criminal record: [%s %s - %s] %s", badgeID,
-				firstName, lastName, status, description);
-		this.log(msg);
-		this.updateUI();
-		return isSuccess;
+		RecordCriminal criminalRecord = new RecordCriminal(id++, firstName, lastName, description,
+				Record.CRStatus.valueOf(status));
+		Message createCRMessage = new Message(MessageType.CreateCRecord, criminalRecord);
+		udpFIFO.sendMessage(createCRMessage, "localhost", 23123);
+		udpFIFO.receiveMessage();
+		return true;
+		
+//		boolean isSuccess = this.storage.addRecord(
+//				new RecordCriminal(id++, firstName, lastName, description,
+//						Record.CRStatus.valueOf(status)),
+//				Record.RecordType.CRIMINAL);
+//		String msg = String.format(
+//				"[%s] create a criminal record: [%s %s - %s] %s", badgeID,
+//				firstName, lastName, status, description);
+//		this.log(msg);
+//		this.updateUI();
+//		return isSuccess;
 	}
 
 	@Override
