@@ -43,19 +43,16 @@ import org.omg.PortableServer.POAPackage.ObjectNotActive;
 import org.omg.PortableServer.POAPackage.ServantAlreadyActive;
 import org.omg.PortableServer.POAPackage.WrongPolicy;
 
-<<<<<<< HEAD:frontEnd/FE.java
 import server.UdpRecCountSvr;
-=======
-import udpFIFO.udpFIFO;
->>>>>>> 522cbffccd914073f7f07a969bc08e8e579802e7:frontEnd/FE.java
 
 import common.City;
+import common.Fifo;
 import common.LogTool;
 import common.Message;
 import common.MessageType;
 import common.Record;
 import common.RecordCriminal;
-import common.RecordMissing;f 
+import common.RecordMissing;
 import common.Storage;
 
 public class FE extends PoliceStationPOA implements Runnable {
@@ -63,7 +60,6 @@ public class FE extends PoliceStationPOA implements Runnable {
 
 	String ior;
 	int id = 10001;
-	Storage storage;
 
 	static final String pathLog = "/tmp/policeStation";
 	LogTool logtool;
@@ -72,28 +68,27 @@ public class FE extends PoliceStationPOA implements Runnable {
 
 	HashMap<City, ServerProcessInfo> serverInfos;
 
+	Fifo fifo;
+
 	@Override
 	public boolean createCRecord(String firstName, String lastName,
 			String description, String status, String badgeID) {
-		
 		this.log("createCRecord() get request from " + badgeID);
-		RecordCriminal criminalRecord = new RecordCriminal(id++, firstName, lastName, description,
-				Record.CRStatus.valueOf(status));
-		Message createCRMessage = new Message(MessageType.CreateCRecord, criminalRecord);
-		udpFIFO.sendMessage(createCRMessage, "localhost", 23123);
-		udpFIFO.receiveMessage();
+
+		RecordCriminal rec = new RecordCriminal(id++, firstName, lastName,
+				description, Record.CRStatus.valueOf(status));
+
+		Message m = new Message(MessageType.CreateCRecord, rec);
+
+		fifo.snd(m);
+		Message res = fifo.rcv();
+
+		String msg = String.format(
+				"[%s] create a criminal record: [%s %s - %s] %s", badgeID,
+				firstName, lastName, status, description);
+		this.log(msg);
+		this.updateUI();
 		return true;
-		
-//		boolean isSuccess = this.storage.addRecord(
-//				new RecordCriminal(id++, firstName, lastName, description,
-//						Record.CRStatus.valueOf(status)),
-//				Record.RecordType.CRIMINAL);
-//		String msg = String.format(
-//				"[%s] create a criminal record: [%s %s - %s] %s", badgeID,
-//				firstName, lastName, status, description);
-//		this.log(msg);
-//		this.updateUI();
-//		return isSuccess;
 	}
 
 	@Override
@@ -102,19 +97,24 @@ public class FE extends PoliceStationPOA implements Runnable {
 			String badgeID) {
 		this.log("createMRecord() get request from " + badgeID);
 		int idrec = id++;
-		String cityname=badgeID.substring(2);
+		String cityname = badgeID.substring(2);
 		Calendar cLastDate = Calendar.getInstance();
 		cLastDate.setTimeInMillis(lastDate);
-		boolean isSuccess = this.storage.addRecord(new RecordMissing(idrec,
-				firstName, lastName, address, cLastDate, lastLocation,
-				Record.MRStatus.valueOf(status)), Record.RecordType.MISSING);
+
+		Message m = new Message(MessageType.CreateMRecord, new RecordMissing(
+				idrec, firstName, lastName, address, cLastDate, lastLocation,
+				Record.MRStatus.valueOf(status)));
+
+		fifo.snd(m);
+		fifo.rcv();
+
 		String msg = String
 				.format("[%s] create a missing record: [id: %s%05d][%s %s - %s] address: %s, last location: %s",
-						badgeID, cityname, idrec, firstName, lastName,
-						status, address, lastLocation);
+						badgeID, cityname, idrec, firstName, lastName, status,
+						address, lastLocation);
 		this.log(msg);
 		this.updateUI();
-		return isSuccess;
+		return true;
 	}
 
 	@Override
@@ -141,11 +141,10 @@ public class FE extends PoliceStationPOA implements Runnable {
 			String newStatus, String badgeID) {
 		String msg = String.format("fail to update a record: [%s - %s] %s",
 				recordID, lastName, newStatus);
-		if (this.storage.updateRecord(recordID, lastName, newStatus)) {
-			msg = String.format(
-					"[%s] success to update a record: [%s - %s] %s", badgeID,
-					recordID, lastName, newStatus);
-		}
+
+		msg = String.format("[%s] success to update a record: [%s - %s] %s",
+				badgeID, recordID, lastName, newStatus);
+
 		this.log(msg);
 		this.updateUI();
 		return null;
@@ -161,48 +160,7 @@ public class FE extends PoliceStationPOA implements Runnable {
 		System.out.println("transferRecord() get request from " + badgeID
 				+ ", record id: " + recordID + ", destination: "
 				+ remoteStationServerName);
-		try {
-			ORB orb = ORB.init(new String[] {}, null);
-			IORRepositoryInterface iorRepo = new IORRepository(ior);
-			String ior = iorRepo.getIOR();
-			org.omg.CORBA.Object ref = orb.string_to_object(ior);
-			PoliceStation anotherPS = PoliceStationHelper.narrow(ref);
 
-			Record rec = this.storage.getRecord(recordID);
-
-			if (rec.getClass() == RecordCriminal.class) {
-				RecordCriminal crec = (RecordCriminal) rec;
-				if (anotherPS.createCRecord(crec.fn, crec.ln, crec.desc,
-						crec.getStatus(), badgeID)) {
-					this.storage.removeRecord(recordID);
-					String msg = String
-							.format("Transfer criminal record (id: %s) to PoliceStation (%s): ",
-									recordID, remoteStationServerName);
-					this.log(msg);
-					this.updateUI();
-					return true;
-				}
-			} else if (rec.getClass() == RecordMissing.class) {
-				RecordMissing mrec = (RecordMissing) rec;
-				if (anotherPS.createMRecord(mrec.fn, mrec.ln,
-						mrec.addrLastKnown,
-						mrec.dateLastSeen.getTimeInMillis(),
-						mrec.PlaceLastSeen, mrec.status.stauts, badgeID)) {
-					this.storage.removeRecord(recordID);
-					String msg = String
-							.format("Transfer missing record (id: %s) to PoliceStation (%s): ",
-									recordID, remoteStationServerName);
-					this.log(msg);
-					this.updateUI();
-					return true;
-				}
-			} else {
-
-			}
-
-		} catch (IOException e) {
-
-		}
 		return false;
 	}
 
@@ -260,15 +218,13 @@ public class FE extends PoliceStationPOA implements Runnable {
 		fe.updateUI();
 		cp.add(fe.jpanel);
 
-		
 		System.out.println(String.format("FrontEnd upd server is up"));
 
 		new Thread(fe).start();
 
 		// }
 		fr.setVisible(true);
-		
-		
+
 		DatagramSocket serverSocket = null;
 		try {
 			serverSocket = new DatagramSocket(PORT);
@@ -279,7 +235,7 @@ public class FE extends PoliceStationPOA implements Runnable {
 		}
 
 		byte[] receiveData = new byte[2048];
-		
+
 		while (true) {
 			DatagramPacket receivePacket = new DatagramPacket(receiveData,
 					receiveData.length);
@@ -289,8 +245,11 @@ public class FE extends PoliceStationPOA implements Runnable {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
 			}
-			String sentence = new String(receivePacket.getData());
 			
+			/*
+			 * update the leader process information
+			 */
+			String sentence = new String(receivePacket.getData());
 
 		}
 
@@ -306,7 +265,7 @@ public class FE extends PoliceStationPOA implements Runnable {
 	}
 
 	public void updateUI() {
-		
+
 	}
 
 	JFrame fr;
@@ -363,8 +322,8 @@ public class FE extends PoliceStationPOA implements Runnable {
 	@Override
 	public String getIDs(String lastname) {
 		System.out.println("get request to getID, lastname:  " + lastname);
-		String ids = this.storage.getIDs(lastname);
-		return ids;
+		//String ids = this.storage.getIDs(lastname);
+		return "";
 	}
 
 }
