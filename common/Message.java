@@ -5,9 +5,9 @@ import java.io.ObjectInputStream;
 import java.io.Serializable;
 
 public class Message implements Serializable {
-	
+
 	MessageType msgType;
-	
+
 	Object msg;
 
 	public Message(MessageType type, Object msg) {
@@ -15,9 +15,10 @@ public class Message implements Serializable {
 		this.msg = msg;
 	}
 
-	static public void	main(String[] args) throws IOException, ClassNotFoundException{
-		Object o=new String("");
-System.out.println(	o.getClass().getCanonicalName());
+	static public void main(String[] args) throws IOException,
+			ClassNotFoundException {
+		Object o = new String("");
+		System.out.println(o.getClass().getCanonicalName());
 		ObjectInputStream ois = null;
 		Message m = (Message) ois.readObject();
 
@@ -30,6 +31,6 @@ System.out.println(	o.getClass().getCanonicalName());
 			break;
 		}
 
-		
 	}
+	
 }

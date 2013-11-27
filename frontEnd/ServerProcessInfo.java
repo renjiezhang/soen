@@ -14,9 +14,16 @@ import javax.swing.text.Document;
 import common.City;
 
 public class ServerProcessInfo extends JComponent implements DocumentListener {
-	private String ip;
+	private String host;
 	private int port;
 	private City city;
+	
+	public int  getPort(){
+		return this.port;
+	}
+	public String getHost(){
+		return this.host;
+	}
 
 	Document docPort, docIP;
 	JTextField txtIP, txtPort;	
@@ -63,8 +70,8 @@ public class ServerProcessInfo extends JComponent implements DocumentListener {
 		try {
 
 			if (this.docIP.getLength() > 0) {
-				this.ip = this.docIP.getText(0, this.docIP.getLength());
-				this.ip = this.ip.trim();
+				this.host = this.docIP.getText(0, this.docIP.getLength());
+				this.host = this.host.trim();
 			}
 			if (this.docPort.getLength() > 0) {
 				String strPort = this.docPort.getText(0,
@@ -83,7 +90,7 @@ public class ServerProcessInfo extends JComponent implements DocumentListener {
 	}
 	private void updateInfo(String ip, int port) {
 
-		this.ip=ip;
+		this.host=ip;
 		this.port=port;
 		this.txtIP.setText(ip);
 		this.txtPort.setText(port+"");

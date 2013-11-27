@@ -47,6 +47,7 @@ import server.UdpRecCountSvr;
 
 import common.City;
 import common.Fifo;
+import common.FifoInterf;
 import common.LogTool;
 import common.Message;
 import common.MessageType;
@@ -68,20 +69,39 @@ public class FE extends PoliceStationPOA implements Runnable {
 
 	HashMap<City, ServerProcessInfo> serverInfos;
 
-	Fifo fifo;
-
+	FifoInterf fifo;
+	
+	
+	private Message callServer(Message m, String badgeId) throws IOException, ClassNotFoundException{
+		String nameCity = badgeId.replaceAll("([a-zA-Z]+)(\\d+)", "$1")
+				.toUpperCase();
+		ServerProcessInfo info=serverInfos.get(nameCity);
+		
+		Message res=null;
+		
+			res = (Message) fifo.snd(m, info.getHost(), info.getPort());
+		
+		
+		return res;
+	}
 	@Override
 	public boolean createCRecord(String firstName, String lastName,
 			String description, String status, String badgeID) {
 		this.log("createCRecord() get request from " + badgeID);
+				
 
 		RecordCriminal rec = new RecordCriminal(id++, firstName, lastName,
 				description, Record.CRStatus.valueOf(status));
-
-		Message m = new Message(MessageType.CreateCRecord, rec);
-
-		fifo.snd(m);
-		Message res = fifo.rcv();
+		
+		try {
+			this.callServer(new Message(MessageType.CreateCRecord, rec), badgeID);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
 		String msg = String.format(
 				"[%s] create a criminal record: [%s %s - %s] %s", badgeID,
@@ -105,8 +125,15 @@ public class FE extends PoliceStationPOA implements Runnable {
 				idrec, firstName, lastName, address, cLastDate, lastLocation,
 				Record.MRStatus.valueOf(status)));
 
-		fifo.snd(m);
-		fifo.rcv();
+		try {
+			this.callServer(m,  badgeID);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
 		String msg = String
 				.format("[%s] create a missing record: [id: %s%05d][%s %s - %s] address: %s, last location: %s",
@@ -200,6 +227,7 @@ public class FE extends PoliceStationPOA implements Runnable {
 		jpanel.setVisible(true);
 
 		this.logtool = new LogTool(pathLog + "/city.log");
+		this.fifo=new Fifo();
 
 	}
 
@@ -241,6 +269,7 @@ public class FE extends PoliceStationPOA implements Runnable {
 					receiveData.length);
 			try {
 				serverSocket.receive(receivePacket);
+				
 			} catch (IOException e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();

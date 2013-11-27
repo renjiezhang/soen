@@ -1,6 +1,11 @@
 package common;
 
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.util.HashSet;
+
+import javax.swing.JComboBox;
+import javax.swing.JPanel;
 
 public enum City {
 
@@ -18,5 +23,33 @@ public enum City {
 		for (City city : City.values())
 			cities.add(city.toString());
 		return cities.contains(name);
+	}
+	
+	@Override
+	public String toString(){
+		return String.format("City Name: %s, Port: %d", this.name, this.portUdp);
+	}
+	
+	static public class CitiesComponent extends JPanel implements ActionListener{
+		public City selection;
+		JComboBox cities;
+		public CitiesComponent(){
+			super();
+			cities=new JComboBox();
+			for(City city: City.values()){
+				cities.addItem(city);
+			}
+
+			cities.addActionListener(this);
+			this.add(cities);
+			//this.setVisible(true);
+		}
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			this.selection=(City) cities.getSelectedItem();
+			
+		}
+		
+		
 	}
 }

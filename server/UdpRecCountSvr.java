@@ -45,7 +45,7 @@ public class UdpRecCountSvr implements Runnable {
 	public void run() {
 		DatagramSocket serverSocket = null;
 		try {
-			serverSocket = new DatagramSocket(ps.city.portUdp);
+			serverSocket = new DatagramSocket(ps.city.selection.portUdp);
 		} catch (SocketException e2) {
 			// TODO Auto-generated catch block
 			e2.printStackTrace();
@@ -76,7 +76,7 @@ public class UdpRecCountSvr implements Runnable {
 			// System.out.println("RECEIVED: " + sentence);
 			InetAddress IPAddress = receivePacket.getAddress();
 			int port = receivePacket.getPort();
-			String rtrMsg = String.format("%s: %d", ps.city.name, count);
+			String rtrMsg = String.format("%s: %d", ps.city.selection.name, count);
 			sendData = rtrMsg.getBytes();
 			DatagramPacket sendPacket = new DatagramPacket(sendData,
 					sendData.length, IPAddress, port);
